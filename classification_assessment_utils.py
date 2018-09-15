@@ -88,7 +88,7 @@ Full binary clasification report (it uses the best theshold according to the cri
 def full_binary_clasification_report(y_truth, y_pred, criterion=None):
     best_thresh = plot_precision_recall_curve(y_truth, y_pred, criterion)
 
-    predicted_classes = cut_probs_with_thresh(y_pred)
+    predicted_classes = cut_probs_with_thresh(y_pred, best_thresh)
 
     predicted_report(y_truth, predicted_classes)
 
