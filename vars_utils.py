@@ -10,7 +10,12 @@ def mean_diff(x, args):
            )
 
 def median_diff(x1, x2):
-    return np.abs(np.median(x1) - np.median(x2)) * -1.0
+    x_input, y = args[0], args[1]
+    
+    return ((np.abs(np.median(y[x_input < x]) - np.median(y[x_input >= x])) * -1.0) 
+                + 
+            np.abs((len(y[x_input < x]) * 100 / len(x_input)) - (len(y[x_input < x]) * 100 / len(x_input)) )
+           )
 
 '''
 Given two numeric variables (one of them is the target variable),
