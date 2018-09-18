@@ -9,7 +9,7 @@ def mean_diff(x, args):
             np.abs((len(y[x_input < x]) * 100 / len(x_input)) - (len(y[x_input < x]) * 100 / len(x_input)) )
            )
 
-def median_diff(x1, x2):
+def median_diff(x1, args):
     x_input, y = args[0], args[1]
     
     return ((np.abs(np.median(y[x_input < x]) - np.median(y[x_input >= x])) * -1.0) 
