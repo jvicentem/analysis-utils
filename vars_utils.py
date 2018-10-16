@@ -3,11 +3,15 @@ import numpy as np
 from scipy.optimize import minimize_scalar  
 from scipy.optimize import differential_evolution
 import sys
-import pyximport; pyximport.install()
 import warnings
 
 @numba.jit(nopython=True)
 def metric_diff_gen(x, args):
+    segment_elements = 0
+    segment_elements_len = 1
+    segment_elements_ratio = 2
+    segment_metric = 3
+
     x_len = len(x)
 
     segments = []
@@ -26,8 +30,9 @@ def metric_diff_gen(x, args):
     if (segment_one_elements_len > 0):
         segment_one_metric = fun(segment_one_elements)
 
-        segments.append({'segment_elements': segment_one_elements, 'segment_elements_len': segment_one_elements_len, 
-                            'segment_elements_ratio': segment_one_elements_ratio, 'segment_metric': segment_one_metric})        
+        # segments.append({'segment_elements': segment_one_elements, 'segment_elements_len': segment_one_elements_len, 
+        #                     'segment_elements_ratio': segment_one_elements_ratio, 'segment_metric': segment_one_metric})    
+        segments.append([segment_one_elements, segment_one_elements_len, segment_one_elements_ratio, segment_one_metric])    
     else:
         return sys.maxsize
 
@@ -39,8 +44,9 @@ def metric_diff_gen(x, args):
         if (segment_middle_elements_len > 0):
             segment_middle_metric = fun(segment_middle_elements)
 
-            segments.append({'segment_elements': segment_middle_elements, 'segment_elements_len': segment_middle_elements_len, 
-                            'segment_elements_ratio': segment_middle_elements_ratio, 'segment_metric': segment_middle_metric})              
+            # segments.append({'segment_elements': segment_middle_elements, 'segment_elements_len': segment_middle_elements_len, 
+            #                 'segment_elements_ratio': segment_middle_elements_ratio, 'segment_metric': segment_middle_metric}) 
+            segments.append([segment_middle_elements, segment_middle_elements_len, segment_middle_elements_ratio, segment_middle_metric])                          
         else:
             return sys.maxsize    
         
@@ -50,11 +56,12 @@ def metric_diff_gen(x, args):
     segment_final_elements_ratio = segment_final_elements_len / x_input_len
     if (segment_final_elements_len > 0):
         segment_final_metric = fun(segment_final_elements)
-    else:
-        return sys.maxsize        
 
-    segments.append({'segment_elements': segment_final_elements, 'segment_elements_len': segment_final_elements_len, 
-                    'segment_elements_ratio': segment_final_elements_ratio, 'segment_metric': segment_final_metric})        
+        # segments.append({'segment_elements': segment_final_elements, 'segment_elements_len': segment_final_elements_len, 
+        #                 'segment_elements_ratio': segment_final_elements_ratio, 'segment_metric': segment_final_metric})     
+        segments.append([segment_final_elements, segment_final_elements_len, segment_final_elements_ratio, segment_final_metric])       
+    else:
+        return sys.maxsize            
 
     # Comparing all segments with each other
     metric_comparisons = []
@@ -64,8 +71,8 @@ def metric_diff_gen(x, args):
 
     for i in range(segments_len):
         for j in range(i+1, segments_len):
-            metric_comparisons.append(np.abs(segments[i]['segment_metric'] - segments[j]['segment_metric']))
-            elems_ratio_comparisons.append(np.abs(segments[i]['segment_elements_ratio'] - segments[j]['segment_elements_ratio']))
+            metric_comparisons.append(np.abs(segments[i][segment_metric] - segments[j][segment_metric]))
+            elems_ratio_comparisons.append(np.abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio]))
 
     metric_comparison_result_normalized = (np.sum((metric_comparisons - np.min(metric_comparisons)) / (np.max(metric_comparisons) - np.min(metric_comparisons))))
     metric_comparison_result_normalized = 0 if np.isnan(metric_comparison_result_normalized) else metric_comparison_result_normalized
