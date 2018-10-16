@@ -7,51 +7,15 @@ import pyximport; pyximport.install()
 import warnings
 
 @numba.jit(nopython=True)
-def mean_diff(x, args):
-    x_input, y = args[0], args[1]
-    
-    return ((np.abs(np.mean(y[x_input < x]) - np.mean(y[x_input >= x])) * -1.0) 
-                + 
-            np.abs((len(y[x_input < x]) * 100 / len(x_input)) - (len(y[x_input >= x]) * 100 / len(x_input)) )
-           )
-
-@numba.jit(nopython=True)
-def median_diff(x, args):
-    x_input, y = args[0], args[1]
-
-    first_half = y[x_input < x]
-    second_half = y[x_input >= x]
-
-    x_input_len = len(x_input)
-    
-    return ((np.abs(np.median(first_half) - np.median(second_half)) * -1.0) 
-                + 
-            np.abs((len(first_half) * 100 / x_input_len) - (len(second_half) * 100 / x_input_len) )
-           )
-
-'''
-Given two numeric variables (one of them is the target variable),
-it discretizes the non target variable so it maximizes the mean or median
-difference between categories 
-'''
-@numba.jit(nopython=True)
-def cut_variable_optimally(x, y, maximize='mean_diff', n_categories = 2):
-    min_x = np.min(x)
-    max_x = np.max(x)
-
-    return minimize_scalar(mean_diff, bounds = [min_x, max_x], 
-                            args = [x, y], options = {'maxiter': 1000},
-                            method = 'bounded')
-
-def median_diff_gen(x, args):   
+def metric_diff_gen(x, args):
     x_len = len(x)
 
     segments = []
 
     if len(args) > 1: 
-        x_input, y, unbalanced_cuts_importance = args[0], args[1], args[2]
+        x_input, y, unbalanced_cuts_importance, fun = args[0], args[1], args[2], args[3]
     else:
-        x_input, y, unbalanced_cuts_importance = args[0][0], args[0][1], args[0][2]
+        x_input, y, unbalanced_cuts_importance, fun = args[0][0], args[0][1], args[0][2], args[0][3]
 
     x_input_len = len(x_input)
 
@@ -60,60 +24,62 @@ def median_diff_gen(x, args):
     segment_one_elements_len = len(segment_one_elements)
     segment_one_elements_ratio = segment_one_elements_len / x_input_len
     if (segment_one_elements_len > 0):
-        segment_one_median = np.median(segment_one_elements)
+        segment_one_metric = fun(segment_one_elements)
+
+        segments.append({'segment_elements': segment_one_elements, 'segment_elements_len': segment_one_elements_len, 
+                            'segment_elements_ratio': segment_one_elements_ratio, 'segment_metric': segment_one_metric})        
     else:
         return sys.maxsize
 
-    segments.append({'segment_elements': segment_one_elements, 'segment_elements_len': segment_one_elements_len, 
-                     'segment_elements_ratio': segment_one_elements_ratio, 'segment_median': segment_one_median})
-
     # Middle segments
-    for i in range(1, (x_len-1)):
+    for i in range(0, (x_len-1)):
         segment_middle_elements = y[(x_input >= x[i]) & (x_input < x[i+1])]
         segment_middle_elements_len = len(segment_middle_elements)
         segment_middle_elements_ratio = segment_middle_elements_len / x_input_len
         if (segment_middle_elements_len > 0):
-            segment_middle_median = np.median(segment_middle_elements)
+            segment_middle_metric = fun(segment_middle_elements)
+
+            segments.append({'segment_elements': segment_middle_elements, 'segment_elements_len': segment_middle_elements_len, 
+                            'segment_elements_ratio': segment_middle_elements_ratio, 'segment_metric': segment_middle_metric})              
         else:
             return sys.maxsize    
-
-        segments.append({'segment_elements': segment_middle_elements, 'segment_elements_len': segment_middle_elements_len, 
-                        'segment_elements_ratio': segment_middle_elements_ratio, 'segment_median': segment_middle_median})  
         
     # Final segment
     segment_final_elements = y[(x_input >= x[(x_len - 1)])]
     segment_final_elements_len = len(segment_final_elements)
     segment_final_elements_ratio = segment_final_elements_len / x_input_len
     if (segment_final_elements_len > 0):
-        segment_final_median = np.median(segment_final_elements)
+        segment_final_metric = fun(segment_final_elements)
     else:
         return sys.maxsize        
 
     segments.append({'segment_elements': segment_final_elements, 'segment_elements_len': segment_final_elements_len, 
-                     'segment_elements_ratio': segment_final_elements_ratio, 'segment_median': segment_final_median})        
+                    'segment_elements_ratio': segment_final_elements_ratio, 'segment_metric': segment_final_metric})        
 
     # Comparing all segments with each other
-    median_comparisons = []
+    metric_comparisons = []
     elems_ratio_comparisons = []
 
     segments_len = len(segments)
 
     for i in range(segments_len):
-        median_comparison_i = 0.0
-        elems_ratio_i_comparison = 0.0
-
         for j in range(i+1, segments_len):
-            median_comparison_i = median_comparison_i + np.abs(segments[i]['segment_median'] - segments[j]['segment_median'])
-            elems_ratio_i_comparison = elems_ratio_i_comparison + np.abs(segments[i]['segment_elements_ratio'] - segments[j]['segment_elements_ratio'])
+            metric_comparisons.append(np.abs(segments[i]['segment_metric'] - segments[j]['segment_metric']))
+            elems_ratio_comparisons.append(np.abs(segments[i]['segment_elements_ratio'] - segments[j]['segment_elements_ratio']))
 
-        median_comparisons.append(median_comparison_i)
-        elems_ratio_comparisons.append(elems_ratio_i_comparison)
+    metric_comparison_result_normalized = (np.sum((metric_comparisons - np.min(metric_comparisons)) / (np.max(metric_comparisons) - np.min(metric_comparisons))))
+    metric_comparison_result_normalized = 0 if np.isnan(metric_comparison_result_normalized) else metric_comparison_result_normalized
 
-    return (np.sum((median_comparisons - np.min(median_comparisons)) / (np.max(median_comparisons) - np.min(median_comparisons))) * -1.0 
+    return (metric_comparison_result_normalized * -1.0 
                 +
             np.sum(elems_ratio_comparisons) * unbalanced_cuts_importance)
 
-def cut_variable_optimally_gen(x, y, unbalanced_cuts_importance = 1, seed = 16121993, n_parts = 2):
+'''
+Given two numeric variables (one of them is the target variable),
+it discretizes the non target variable so it maximizes the mean or median
+difference between categories 
+'''
+def calculate_optimal_cuts(x, y, unbalanced_cuts_importance = 1, maximize='mean_diff', seed = 16121993, n_parts = 2, max_iter = 1000):
     min_x = np.min(x)
     max_x = np.max(x)
 
@@ -128,7 +94,13 @@ def cut_variable_optimally_gen(x, y, unbalanced_cuts_importance = 1, seed = 1612
         n_parts = np.abs(n_parts)
         warnings.warn('Warning: number of parts was negative: value converted to absolute') 
 
-    if n_parts == 2:
-        return cut_variable_optimally(x, y, maximize='median_diff')
+    if maximize == 'median_diff':
+        return differential_evolution(metric_diff_gen, bounds = [(min_x, max_x)] * (n_parts - 1), 
+                                        args = [(x, y, unbalanced_cuts_importance, np.median)], 
+                                        maxiter = max_iter, seed = seed).x  
+    elif maximize == 'mean_diff':
+        return differential_evolution(metric_diff_gen, bounds = [(min_x, max_x)] * (n_parts - 1), 
+                                        args = [(x, y, unbalanced_cuts_importance, np.mean)], 
+                                        maxiter = max_iter, seed = seed).x  
     else:
-        return differential_evolution(median_diff_gen, bounds = [(min_x, max_x)] * (n_parts - 1), args = [(x, y, unbalanced_cuts_importance)], maxiter = 1000, seed = seed)  
+        warnings.warn('Invalid maximization method.') 
