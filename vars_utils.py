@@ -82,6 +82,8 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
             elems_ratio_comparisons[k] = abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio])
 
             k = k+1
+    
+    # TODO metric comparisons not normalized
     metric_comparison_result_normalized = -1 
 
     metric_comparison_result_normalized = 0 if np.isnan(metric_comparison_result_normalized) else metric_comparison_result_normalized
