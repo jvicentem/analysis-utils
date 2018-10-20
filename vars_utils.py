@@ -34,7 +34,7 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
         elif metric == 1:
             segment_one_metric = np.mean(segment_one_elements)
 
-        segments.append([segment_one_elements_ratio, segment_one_metric])    
+        segments.append((segment_one_elements_ratio, segment_one_metric))    
     else:
         return sys.maxsize
 
@@ -49,7 +49,7 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
             elif metric == 1:
                 segment_middle_metric = np.mean(segment_middle_elements)            
 
-            segments.append([segment_middle_elements_ratio, segment_middle_metric])                          
+            segments.append((segment_middle_elements_ratio, segment_middle_metric))                          
         else:
             return sys.maxsize    
         
@@ -63,41 +63,34 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
         elif metric == 1:
             segment_final_metric = np.mean(segment_middle_elements)         
   
-        segments.append([segment_final_elements_ratio, segment_final_metric])       
+        segments.append((segment_final_elements_ratio, segment_final_metric))       
     else:
         return sys.maxsize            
 
     # Comparing all segments with each other
-    metric_comparisons = []
-    elems_ratio_comparisons = []
-
     segments_len = len(segments)
+    metric_comparisons = []
+    n_comparisons = int(((segments_len * (segments_len - 1))) / 2)
+    elems_ratio_comparisons = np.zeros(n_comparisons)
+
+    k = 0
 
     for i in range(segments_len):
         for j in range(i+1, segments_len):
             metric_comparisons.append(abs(segments[i][segment_metric] - segments[j][segment_metric]))
-            elems_ratio_comparisons.append(abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio]))
 
+            elems_ratio_comparisons[k] = abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio])
+
+            k = k+1
     metric_comparison_result_normalized = -1 
-    # metric_comparison_result_normalized = (np.sum((metric_comparisons - np.min(metric_comparisons)) / (np.max(metric_comparisons) - np.min(metric_comparisons))))        
+
     metric_comparison_result_normalized = 0 if np.isnan(metric_comparison_result_normalized) else metric_comparison_result_normalized
-
-    elems_ratio_comparisons = np.asarray(elems_ratio_comparisons)
-
-    print(elems_ratio_comparisons)
 
     return (metric_comparison_result_normalized * -1.0 
                 +
             sum1d(elems_ratio_comparisons) * unbalanced_cuts_importance)    
 
 def metric_diff_gen(x, args):
-    # segment_elements_ratio = 0
-    # segment_metric = 1
-
-    # x_len = len(x)
-
-    # segments = []
-
     if len(args) > 1: 
         x_input, y, unbalanced_cuts_importance, metric = args[0], args[1], args[2], args[3]
     else:
@@ -109,60 +102,6 @@ def metric_diff_gen(x, args):
         metric = 1
 
     return metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric)
-
-    # x_input_len = len(x_input)
-
-    # # First segment
-    # segment_one_elements = y[x_input < x[0]]
-    # segment_one_elements_len = len(segment_one_elements)
-    # segment_one_elements_ratio = segment_one_elements_len / x_input_len
-    # if (segment_one_elements_len > 0):
-    #     segment_one_metric = fun(segment_one_elements)
-
-    #     segments.append([segment_one_elements_ratio, segment_one_metric])    
-    # else:
-    #     return sys.maxsize
-
-    # # Middle segments
-    # for i in range(0, (x_len-1)):
-    #     segment_middle_elements = y[(x_input >= x[i]) & (x_input < x[i+1])]
-    #     segment_middle_elements_len = len(segment_middle_elements)
-    #     segment_middle_elements_ratio = segment_middle_elements_len / x_input_len
-    #     if (segment_middle_elements_len > 0):
-    #         segment_middle_metric = fun(segment_middle_elements)
-
-    #         segments.append([segment_middle_elements_ratio, segment_middle_metric])                          
-    #     else:
-    #         return sys.maxsize    
-        
-    # # Final segment
-    # segment_final_elements = y[(x_input >= x[(x_len - 1)])]
-    # segment_final_elements_len = len(segment_final_elements)
-    # segment_final_elements_ratio = segment_final_elements_len / x_input_len
-    # if (segment_final_elements_len > 0):
-    #     segment_final_metric = fun(segment_final_elements)
-  
-    #     segments.append([segment_final_elements_ratio, segment_final_metric])       
-    # else:
-    #     return sys.maxsize            
-
-    # # Comparing all segments with each other
-    # metric_comparisons = []
-    # elems_ratio_comparisons = []
-
-    # segments_len = len(segments)
-
-    # for i in range(segments_len):
-    #     for j in range(i+1, segments_len):
-    #         metric_comparisons.append(np.abs(segments[i][segment_metric] - segments[j][segment_metric]))
-    #         elems_ratio_comparisons.append(np.abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio]))
-
-    # metric_comparison_result_normalized = (np.sum((metric_comparisons - np.min(metric_comparisons)) / (np.max(metric_comparisons) - np.min(metric_comparisons))))
-    # metric_comparison_result_normalized = 0 if np.isnan(metric_comparison_result_normalized) else metric_comparison_result_normalized
-
-    # return (metric_comparison_result_normalized * -1.0 
-    #             +
-    #         np.sum(elems_ratio_comparisons) * unbalanced_cuts_importance)
 
 '''
 Given two numeric variables (one of them is the target variable),
@@ -190,4 +129,6 @@ def calculate_optimal_cuts(x, y, unbalanced_cuts_importance = 1, maximize='mean_
                                         maxiter = max_iter, seed = seed).x  
     else:
         warnings.warn('Invalid maximization method.') 
+
+# dev
 # vars_utils.calculate_optimal_cuts(np.array([3, 4, 5, 6, 7, 8, 9, 10]), np.array([0, 0, 10, 10, 50, 50, 100, 100]), maximize='median_diff', n_parts = 4)
