@@ -69,28 +69,40 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
 
     # Comparing all segments with each other
     segments_len = len(segments)
-    metric_comparisons = []
     n_comparisons = int(((segments_len * (segments_len - 1))) / 2)
-    elems_ratio_comparisons = np.zeros(n_comparisons)
+    comparisons_array_initialized = np.zeros(n_comparisons)
+    metric_comparisons = comparisons_array_initialized
+    elems_ratio_comparisons = comparisons_array_initialized
 
-    k = 0
+    comparison_index = 0
 
     for i in range(segments_len):
         for j in range(i+1, segments_len):
-            metric_comparisons.append(abs(segments[i][segment_metric] - segments[j][segment_metric]))
+            metric_comparisons[comparison_index] = abs(segments[i][segment_metric] - segments[j][segment_metric])
 
-            elems_ratio_comparisons[k] = abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio])
+            elems_ratio_comparisons[comparison_index] = abs(segments[i][segment_elements_ratio] - segments[j][segment_elements_ratio])
 
-            k = k+1
+            comparison_index = comparison_index+1
     
-    # TODO metric comparisons not normalized
-    metric_comparison_result_normalized = -1 
+    metric_comparisons_min = np.min(metric_comparisons)
+    metric_comparisons_max = np.max(metric_comparisons)
 
-    metric_comparison_result_normalized = 0 if np.isnan(metric_comparison_result_normalized) else metric_comparison_result_normalized
+    if (metric_comparisons_min == 0.0 and metric_comparisons_max == 0.0):
+        return sum1d(elems_ratio_comparisons) * unbalanced_cuts_importance
+    else:        
+        metric_comparison_result_normalized = (metric_comparisons - metric_comparisons_min) /  (metric_comparisons_max - metric_comparisons_min)
 
-    return (metric_comparison_result_normalized * -1.0 
-                +
-            sum1d(elems_ratio_comparisons) * unbalanced_cuts_importance)    
+        # print(sum1d(metric_comparison_result_normalized) * -1.0)
+        # print(sum1d(elems_ratio_comparisons) * unbalanced_cuts_importance)
+        # print('...')
+        # print(sum1d(metric_comparison_result_normalized) * -1.0 
+        #             +
+        #         sum1d(elems_ratio_comparisons) * unbalanced_cuts_importance)
+        # print('------------------------------')
+
+        return (sum1d(metric_comparison_result_normalized) * -1.0 
+                    +
+                sum1d(elems_ratio_comparisons) * unbalanced_cuts_importance)           
 
 def metric_diff_gen(x, args):
     if len(args) > 1: 
@@ -128,7 +140,7 @@ def calculate_optimal_cuts(x, y, unbalanced_cuts_importance = 1, maximize='mean_
     if maximize == 'median_diff' or maximize == 'mean_diff':
         return differential_evolution(metric_diff_gen, bounds = [(min_x, max_x)] * (n_parts - 1), 
                                         args = [(x, y, unbalanced_cuts_importance, maximize)], 
-                                        maxiter = max_iter, seed = seed).x  
+                                        maxiter = max_iter, seed = seed)
     else:
         warnings.warn('Invalid maximization method.') 
 
