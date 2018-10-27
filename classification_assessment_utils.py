@@ -9,15 +9,37 @@ import warnings
 Performance report for binary categorical data (categories coded as 1 and 0)
 given an array of real values and an array of predicted values.
 '''
-def predicted_report(y_test, y_pred):   
+def predicted_report(y_truth, y_pred, help=True):   
     results_to_vals = np.vectorize(lambda x: '1' if x == 1 else '0')
 
-    y_test_str = results_to_vals(y_test)
+    y_truth_str = results_to_vals(y_truth)
     y_pred_str = results_to_vals(y_pred)
     
-    print('%s\n' % pd.crosstab(y_test_str, y_pred_str, rownames=['Actual'], colnames=['Predicted'], margins=True))
+    conf_matrix = pd.crosstab(y_truth_str, y_pred_str, rownames=['Actual'], colnames=['Predicted'], margins=True)
 
-    print(classification_report(y_test_str, y_pred_str))
+    print('%s\n' % conf_matrix)
+
+    print('')
+    print('Note: You need to look at the row with the positive class label on the left.')
+    print(classification_report(y_truth_str, y_pred_str))
+
+    print('')
+    print('True Negative Rate: %f' % (conf_matrix.loc['0', '0'] / (conf_matrix.loc['0', '0'] + conf_matrix.loc['0', '1']) ))
+    print('False Positive Rate: %f' % (conf_matrix.loc['0', '1'] / (conf_matrix.loc['0', '1'] + conf_matrix.loc['0', '0']) ))
+    print('False Negative Rate: %f' % (conf_matrix.loc['1', '0'] / (conf_matrix.loc['1', '0'] + conf_matrix.loc['1', '1']) ))
+
+    print('F2: %f' % (fbeta_metric(conf_matrix.loc['1', '1'], conf_matrix.loc['0', '1'], conf_matrix.loc['1', '0'] , 2)))
+
+    if help:
+        print('')
+        print('Precision: ratio of the observations correctly classified as positive from all observations classified as positive.')
+        print('Recall = Sensitivity = True Positive Rate: ratio of observations correctly classified as positive from all observations that are actually positive.')
+        print('F1-Score: Ratio between precision and recall.')
+        print('F2-Score: Ratio between precision and recall, with more weight on recall.')
+        print('True Positive Rate: TP / (TP + FN)')
+        print('True Negative Rate = Specificity: TN / (TN + FP)')
+        print('False Positive Rate: FP / (FP + TN)')
+        print('False Negative Rate: FN / (FN + TP)')
 
 '''
 It plots percision-recall curve for binary categorical data (categories coded as 1 and 0) and returns
@@ -83,7 +105,14 @@ def cut_probs_with_thresh(probs, thresh = 0.5):
     return cut_with_thresh(probs)
 
 '''
-Full binary clasification report (it uses the best theshold according to the criterion specified)
+Full binary clasification report (it uses the best theshold according to the criterion specified).
+
+You can choose (optional) between the following criterions (if no criterion is chosen, 0.5 will be always returned):
+- F1 score (criterion = 'F1')
+- F2 score (criterion = 'F2')
+- Lowest difference between precision and recall (metricriterion = 'min_prec-rec')
+- Best F1 score with lowest difference between precision and recall (criterion = 'F1_min_p_r')
+- Best F2 score with lowest difference between precision and recall (criterion = 'F2_min_p_r')
 '''
 def full_binary_clasification_report(y_truth, y_pred, criterion=None):
     best_thresh = plot_precision_recall_curve(y_truth, y_pred, criterion)
@@ -158,3 +187,11 @@ def k_folds_evaluation(cv_results, scorings):
 
     if flag_no_valid_scorings:
         warnings.warn('No valid scorings were provided')
+
+def fbeta_metric(tp, fp, fn, beta):
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+
+    beta_squared = beta*beta
+
+    return (1 + beta_squared) * ((precision * recall) / (beta_squared * precision + recall))
