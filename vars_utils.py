@@ -25,8 +25,6 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
     x_input_len = len(x_input)
 
     # First segment
-    # print('First segment:')
-    # print('y[x_input < %f]' % x[0])
     segment_one_elements = y[x_input < x[0]]
     segment_one_elements_len = len(segment_one_elements)
     segment_one_elements_ratio = segment_one_elements_len / x_input_len
@@ -40,12 +38,8 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
     else:
         return sys.maxsize
 
-    # print(segment_one_metric)
-
     # Middle segments
     for i in range(0, (x_len-1)):
-        # print('Middle segment %d:' % i)
-        # print('y[(x_input >= %f) & (x_input < %f)]' % (x[i], x[i+1]))
         segment_middle_elements = y[(x_input >= x[i]) & (x_input < x[i+1])]
         segment_middle_elements_len = len(segment_middle_elements)
         segment_middle_elements_ratio = segment_middle_elements_len / x_input_len
@@ -61,9 +55,7 @@ def metric_diff_gen_numba(x, x_input, y, unbalanced_cuts_importance, metric):
 
         # print(segment_middle_metric)
         
-    # Final segment
-    # print('Final segment:')
-    # print('y[x_input >= %f]' % x[(x_len - 1)])    
+    # Final segment 
     segment_final_elements = y[(x_input >= x[(x_len - 1)])]
     segment_final_elements_len = len(segment_final_elements)
     segment_final_elements_ratio = segment_final_elements_len / x_input_len
@@ -141,7 +133,10 @@ def metric_diff_gen(x, args):
 '''
 Given two numeric variables (one of them is the target variable),
 it discretizes the non target variable so it maximizes the mean or median
-difference between categories 
+difference between categories.
+
+Example, 4 parts:
+[min_value, first_value) [first_value, second_value) [second_value, third_value) [third_value, max_value]
 '''
 def calculate_optimal_cuts(x, y, unbalanced_cuts_importance = 1, maximize='mean_diff', seed = 16121993, n_parts = 2, max_iter = 1000):
     min_x = np.min(x)
