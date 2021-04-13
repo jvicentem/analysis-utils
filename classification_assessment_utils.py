@@ -24,11 +24,12 @@ def predicted_report(y_truth, y_pred, help=True):
     print(classification_report(y_truth_str, y_pred_str))
 
     print('')
-    print('True Negative Rate: %f' % (conf_matrix.loc['0', '0'] / (conf_matrix.loc['0', '0'] + conf_matrix.loc['0', '1']) ))
-    print('False Positive Rate: %f' % (conf_matrix.loc['0', '1'] / (conf_matrix.loc['0', '1'] + conf_matrix.loc['0', '0']) ))
-    print('False Negative Rate: %f' % (conf_matrix.loc['1', '0'] / (conf_matrix.loc['1', '0'] + conf_matrix.loc['1', '1']) ))
+    if '1' in conf_matrix.columns:
+        print('True Negative Rate: %f' % (conf_matrix.loc['0', '0'] / (conf_matrix.loc['0', '0'] + conf_matrix.loc['0', '1']) ))
+        print('False Positive Rate: %f' % (conf_matrix.loc['0', '1'] / (conf_matrix.loc['0', '1'] + conf_matrix.loc['0', '0']) ))
+        print('False Negative Rate: %f' % (conf_matrix.loc['1', '0'] / (conf_matrix.loc['1', '0'] + conf_matrix.loc['1', '1']) ))
 
-    print('F2: %f' % (fbeta_metric(conf_matrix.loc['1', '1'], conf_matrix.loc['0', '1'], conf_matrix.loc['1', '0'] , 2)))
+        print('F2: %f' % (fbeta_metric(conf_matrix.loc['1', '1'], conf_matrix.loc['0', '1'], conf_matrix.loc['1', '0'] , 2)))
 
     if help:
         print('')
@@ -44,7 +45,6 @@ def predicted_report(y_truth, y_pred, help=True):
 '''
 It plots percision-recall curve for binary categorical data (categories coded as 1 and 0) and returns
 the best threshold for the chosen criterion. 
-
 You can choose (optional) between the following criterions (if no criterion is chosen, 0.5 will be always returned):
 - F1 score (criterion = 'F1')
 - F2 score (criterion = 'F2')
@@ -106,7 +106,6 @@ def cut_probs_with_thresh(probs, thresh = 0.5):
 
 '''
 Full binary clasification report (it uses the best theshold according to the criterion specified).
-
 You can choose (optional) between the following criterions (if no criterion is chosen, 0.5 will be always returned):
 - F1 score (criterion = 'F1')
 - F2 score (criterion = 'F2')
@@ -124,12 +123,9 @@ def full_binary_clasification_report(y_truth, y_pred, criterion=None):
 
 '''
 Auxiliar function to show the results of SkLearn Cross-Validation Grid-Search in a fancy way.
-
 cv_results must be a result of cross_validate function.
-
 scoring must be same scoring list used for the cross_validate function must be provided. 
 The full possible list of scorings is the following: ['roc_auc', 'accuracy', 'f1', 'f2', 'precision', 'recall']
-
 For each metric, the metric value for each fold and the mean (and its standard deviation) of the metric across all folds 
 are printed.
 '''
